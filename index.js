@@ -1,99 +1,136 @@
 const express = require('express')
 const app = express()
-const port = 3000
-
-//enable json body parsing dekat client.http
-app.use(express.json())
-
-app.post('/',(req,res) => {
-  let data = req.body
-  let loginResult = login(
-    data.username, data.email)
-  res.send(
-    login(data.username, data.email))
-    
-});
-app.use(express.json())
-function login(username, email){
-  console.log("someone try to login with", username, email)
-  let matched = dbUsers.find(Element => 
-      //console.log(Element)
-      Element.username == username
-  )//finding element in the array
-if(matched){
-  if(matched.email == email){
-      return matched
-  }else{
-      return "email not matched"
-  }
-}else{
-  return "user not found"
-}
-}
+const port = 4000
+const jwt = require('jsonwebtoken');
 
 let dbUsers = [
   {
-      username: "soo",
-      phone: "123142",
-      email: "soooo@gmail.com"
-  },{
       username: "daus",
-      phone: "1999123",
+      password: "5555",
       email: "dauskepam@gmail.com"
-  },{
+  },
+      {
       username: "deyy",
-      phone: "3333",
-      email: "Nclub@gmail.com"
+      password: "6666",
+      email: "nclub@gmail.com"
+  },
+      {
+      username: "fakh",
+      password: "8888",
+      email: "serunding@gmail.com"
   }
 ]
 
+// enable json body parsing
+app.use(express.json())
+
+// create a GET route
 app.get('/', (req, res) => {
-  res.send('Hello World!');
-});
+  res.send('Hello World!')
+})
 
 app.post('/', (req, res) => {
-  res.send('Post request');
-});
+  let data = req.body
+  let loginResult = login(data.username, data.password)
+  res.send(
+    {
+      status: loginResult,
+      originalData: data,
+      date: Date.now()
+    })
+})
 
-app.post('/login', (req,res) =>{
+// create a POST route for the user to login
+app.post('/login', (req, res) => {
 
-  const {username, email} =req.body;
+  // // get the usernames and passwords from the request body
+  // const {username, password} = req.body;
 
-  const user = dbUsers.find(user => user.username === username && user.email === email);
+  // // find the user in the database
+  // const user = dbUsers.find(user => user.username === username && user.password === password);
 
-  if(user){
-    res.send(user);
-  }
-  else{
-    res.send({ error: "user not found"});
-  }
+  // // if user is found, return the user object
+  // if (user) {
+  //   res.send(user);
+  // } else {
+
+  //   // if user is not found, return an error
+  //   res.send({ error: "User not found"});
+  // }
+  let data = req.body 
+  let user = login(data.username, data.password, data.email)
+  res.send(generateToken(user))
+})
+
+// create a POST route for the user to register
+app.post('/register', (req, res) => {
+  let data = req.body
+  res.send(
+    register(data.username, data.password, data.email)
+  )
 })
 
 app.get('/bye', (req, res) => {
-    res.send('Bye Bye World!');
-  });
+    res.send('Bye Bye World!')
+})
 
+// start the server
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
-});
+  console.log(`Example app listening on port ${port}`)
+})
 
-app.post('/register' , (req, res)=>{
-let data = req.body
-res.send(
-  register(
-    data.username,
-    data.email,
-    data.phone
-  )
-)});
+function login(username, password) {
+  console.log("Someone try to login with username:", username, "and password:", password)
+  let matched = dbUsers.find(element =>
+      element.username == username
+  ) // finding element in the array
+  if (matched) {
+      if (matched.password == password) {
+          return matched
+      } else {
+          return "Passwords do not match"}
+  } else {
+      return "Username not found"
+  }
+}
 
-function register(newusername, newphone, newemail){
-  {
+function register (newusername, newpassword, newemail) {
+  // todo: check if username exist
+  let userCheck = dbUsers.find(element =>
+      element.username == newusername
+  ) // check username in database
+  if (userCheck){
+      return "User already registered"
+  } else {
       dbUsers.push({
           username: newusername,
-          phone: newphone,
+          password: newpassword,
           email: newemail
       })
   }
   return "Registered successfully"
-  }
+}
+
+// to generate JWT token
+function generateToken (userProfile) {
+  return jwt.sign(
+    userProfile.secret, { expiresIn: 60 * 60 }); // 'secret' is the server password to protect the token
+
+}
+
+//to verify JWT token
+function verifyToken(req, res, next){
+  let header = req.headers.authorization
+  console.log(header)
+
+  let token = header.split('')[1]
+
+  jwt.verify(token, 'fsfbsdnfkjsnfmks_ajsdnasd', function(err, decoded){
+    if(err){
+      res.send("invalid token")
+    }
+    console.log(decoded)//bar
+
+    next()
+  });
+}
